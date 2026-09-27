@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      - run: npm install
         working-directory: web
       - run: npm run lint
         working-directory: web
@@ -33,7 +33,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: foundry-rs/foundry-toolchain@v1
-      - run: forge install
+      - run: |
+          forge install foundry-rs/forge-std@v1.16.2 --no-commit
+          forge install OpenZeppelin/openzeppelin-contracts@v5.7.0 --no-commit
         working-directory: contracts
       - run: forge test -vvv --fuzz-runs 256
         working-directory: contracts
@@ -55,7 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: foundry-rs/foundry-toolchain@v1
-      - run: forge install
+      - run: |
+          forge install foundry-rs/forge-std@v1.16.2 --no-commit
+          forge install OpenZeppelin/openzeppelin-contracts@v5.7.0 --no-commit
         working-directory: contracts
       - run: forge build
         working-directory: contracts
@@ -74,7 +78,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
+      - run: npm install
         working-directory: web
       - run: npm run test
         working-directory: web
