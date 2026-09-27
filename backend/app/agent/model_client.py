@@ -52,7 +52,11 @@ class ScriptedModelClient:
 
         buffer_balance = snapshot.bucket_balances.get("Buffer", 0)
         next_two_weeks_need = sum(w.needed for w in forecast.weeks[:2])
-        idle_margin = buffer_balance - next_two_weeks_need
+        # forecast.weeks[].needed is a float (statistically derived); on-chain amounts are
+        # uint256 base units, so this must be a whole int before it ever reaches a contract
+        # call -- truncating (not rounding) means we never propose sweeping fractional
+        # margin we don't actually have.
+        idle_margin = int(buffer_balance - next_two_weeks_need)
         min_yield_move = guardrails.get("min_yield_move_amount", 0)
         if idle_margin > 0 and idle_margin >= min_yield_move:
             actions.append(

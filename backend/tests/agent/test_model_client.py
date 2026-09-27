@@ -48,6 +48,10 @@ def test_sweeps_idle_buffer_margin_to_yield() -> None:
     sweep_actions = [a for a in actions if a["type"] == "sweep_to_yield"]
     assert len(sweep_actions) == 1
     assert sweep_actions[0]["params"]["amount"] == 1000_000000 - 200_000000
+    # A float amount here would fail ABI encoding as a uint256 the moment it reaches a
+    # real contract call (caught by manually running the RUNBOOK's walkthrough) -- must
+    # always be a plain int, since forecast.weeks[].needed is a float.
+    assert isinstance(sweep_actions[0]["params"]["amount"], int)
 
 
 def test_no_sweep_when_below_minimum_move_amount() -> None:

@@ -102,6 +102,11 @@ def test_create_vault_endpoint_deploys_a_real_vault_on_chain(anvil_url: str) -> 
         vault_contract = ChainClient(w3).vault(body["vault_addr"])
         assert vault_contract.functions.minTaxBps().call() == 2000
         assert vault_contract.functions.owner().call().lower() == "0x1234567890123456789012345678901234567890"
+
+        # Caught a real bug here originally: deploy_vault() deployed the vault but never
+        # registered it with the YieldPool, so sweep_to_yield/redeem silently reverted
+        # forever afterwards. This assertion is what should have caught it the first time.
+        assert yield_pool.functions.registeredVaults(Web3.to_checksum_address(body["vault_addr"])).call() is True
     finally:
         for dep in (
             get_chain_client,

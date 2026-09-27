@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -23,6 +24,8 @@ from app.chain.signer import OperatorSigner
 from app.db.models import Decision, Vault
 
 GENESIS_HASH = "0" * 64
+
+logger = logging.getLogger(__name__)
 
 
 class ActionExecutor(Protocol):
@@ -130,17 +133,44 @@ def run_cycle(
 
     # Act -- only the accepted actions ever reach the chain.
     tx_hashes: list[str] = []
+    reverted_action_ids: set[int] = set()
     for action, _result in accepted:
         if action.type == ActionType.FLAG:
             continue  # flags need the owner; no money moves
         try:
             tx_hash = execute_action_fn(chain_client, signer, vault.vault_addr, action)
             tx_hashes.append(tx_hash)
-        except SimulationRevertedError:
+        except SimulationRevertedError as exc:
             # The contract's own guardrails disagreed with our off-chain check; treat as
             # rejected rather than crash the cycle. A real mismatch here is a bug worth
-            # alerting on, but it must never take down the scheduler.
+            # alerting on -- logged with the actual revert reason, not swallowed, since
+            # "accepted by policy but silently never executed" is exactly the failure mode
+            # that's otherwise invisible from the decision log alone.
+            logger.warning(
+                "on-chain simulation reverted for vault %s, action %s: %s",
+                vault.id,
+                action.type.value,
+                exc,
+            )
+            reverted_action_ids.add(id(action))
             rejected.append((action, PolicyResult(accepted=False, rejected_rule="simulation_reverted")))
+
+    if reverted_action_ids:
+        # The row committed above already says "accepted" for these -- that was true of
+        # the off-chain policy check, but the decision log's job is to reflect what
+        # actually happened, not just what was planned, so it's corrected here rather
+        # than left to quietly disagree with the (null) tx_hash forever.
+        decision.policy_result = {
+            "accepted": [
+                {
+                    "accepted": entry["accepted"] and id(action) not in reverted_action_ids,
+                    "rejected_rule": "simulation_reverted" if id(action) in reverted_action_ids else entry["rejected_rule"],
+                    "action": entry["action"],
+                }
+                for action, entry in zip(proposed_actions, policy_dict, strict=True)
+            ],
+            "raw_model_output": decision.policy_result.get("raw_model_output"),
+        }
 
     if tx_hashes:
         decision.tx_hash = tx_hashes[0]

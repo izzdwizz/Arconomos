@@ -6,6 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.agent.cycle import run_cycle
 from app.agent.model_client import ScriptedModelClient
+from app.chain.client import SimulationRevertedError
 from app.db.models import Base, Bill, BucketBalance, Decision, User, Vault
 
 
@@ -122,3 +123,37 @@ def test_cycle_sweeps_idle_buffer_to_yield_and_executes_on_chain() -> None:
 
     decision = db.execute(select(Decision).where(Decision.id == result.decision_id)).scalar_one()
     assert decision.tx_hash == "0xdeadbeef"
+
+
+def test_cycle_records_chain_revert_honestly_in_the_decision_log() -> None:
+    """A YieldPool that hasn't registered this vault yet (a real bug this caught: see
+    docs/RUNBOOK.md) reverts sweep_to_yield on-chain even though the off-chain policy
+    check accepted it. The persisted decision must say so, not just log it and move on."""
+    db, vault = _make_db_and_vault()
+    db.add(BucketBalance(vault_id=vault.id, bucket="Buffer", amount=1000_000000, as_of_block=1))
+    db.commit()
+
+    chain = FakeChainClient(_guardrails(), [2000, 2000, 2000, 1500, 1500, 1000])
+
+    def fake_execute_that_reverts(client, signer, vault_address, action):
+        raise SimulationRevertedError("YieldPool: not registered")
+
+    result = run_cycle(
+        db,
+        chain,
+        FakeSigner(),
+        vault,
+        trigger="daily",
+        model_client=ScriptedModelClient(),
+        execute_action_fn=fake_execute_that_reverts,
+    )
+
+    assert result.tx_hashes == []
+    assert result.rejected_count == 1
+
+    decision = db.execute(select(Decision).where(Decision.id == result.decision_id)).scalar_one()
+    assert decision.tx_hash is None
+    accepted_entries = decision.policy_result["accepted"]
+    assert len(accepted_entries) == 1
+    assert accepted_entries[0]["accepted"] is False
+    assert accepted_entries[0]["rejected_rule"] == "simulation_reverted"

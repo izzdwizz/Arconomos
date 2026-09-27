@@ -64,8 +64,22 @@ def deploy_vault(
 
     deployed_events = factory.events.VaultDeployed().process_receipt(receipt)
     args = deployed_events[0]["args"]
+    vault_address = args["vault"]
+
+    # Without this, sweep_to_yield/redeem silently revert forever for this vault:
+    # YieldPool.deposit/redeem are onlyRegistered, and nothing else ever registers a newly
+    # deployed vault. The relayer is also the YieldPool's admin in this deployment (see
+    # docs/RUNBOOK.md's manual deploy steps -- the same key both roles), so it can do this
+    # as part of the same setup flow the user pays no gas for.
+    yield_pool = client.yield_pool(Web3.to_checksum_address(request.yield_pool_address))
+    register_fn = yield_pool.functions.registerVault(vault_address)
+    register_nonce = client.w3.eth.get_transaction_count(relayer_address)
+    register_tx = client.build_transaction(register_fn, from_address=relayer_address, nonce=register_nonce)
+    register_tx_hash = relayer_signer.sign_and_send(client.w3, register_tx)
+    client.w3.eth.wait_for_transaction_receipt(HexBytes(register_tx_hash))
+
     return DeployedVault(
-        vault_address=args["vault"],
+        vault_address=vault_address,
         income_inbox_address=args["incomeInbox"],
         topup_inbox_address=args["topupInbox"],
         tx_hash=client.w3.to_hex(tx_hash),

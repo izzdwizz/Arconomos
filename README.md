@@ -4,7 +4,11 @@ An AI operator that holds, splits and grows a small business's USDC on Arc: ever
 
 Built for the Tameion Agents Hackathon (Sep 27 – Oct 10, 2026), targeting RFB 01 (Intelligent Business Treasury) and RFB 04 (Autonomous Business Operator).
 
-See [`docs/PRD.md`](docs/PRD.md) for the full product requirements and architecture.
+See [`docs/PRD.md`](docs/PRD.md) for the full product requirements and architecture, and
+[`docs/RUNBOOK.md`](docs/RUNBOOK.md) for a complete, step-by-step guide to installing
+prerequisites, configuring every environment variable, standing up all five pieces
+(Postgres, the chain, the backend, the agent worker, the web app), and manually walking
+through the whole system end to end.
 
 ## Repo layout
 
@@ -25,6 +29,11 @@ oikonomos/
 ```
 
 ## Getting started
+
+The short version below is enough to run the test suites. For running the whole system
+together, deploying contracts, every environment variable explained (including which ones
+you can reuse from an existing Arc project), and a full manual end-to-end walkthrough, see
+[`docs/RUNBOOK.md`](docs/RUNBOOK.md).
 
 - **Contracts:** `cd contracts && forge test`
 - **Database:** `docker compose up -d postgres` (Postgres 16, exposed on `localhost:5433` to avoid clashing with a local Postgres on the default port)
