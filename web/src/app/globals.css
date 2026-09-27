@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* Theme tokens ported from the Arc-402 paywall frontend, so both apps read as one system. */
+:root {
+  --bg: #ffffff;
+  --bg-raised: #ffffff;
+  --fg: #0a0a0a;
+  --muted: #6b7280;
+  --muted-2: #9ca3af;
+  --border: #e5e5e5;
+  --border-soft: #ececec;
+  --pill: #0a0a0a;
+  --pill-fg: #ffffff;
+  --accent: #5b4cf5;
+  --accent-soft: rgba(91, 76, 245, 0.12);
+  --accent-fg: #ffffff;
+  --good: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+  --shadow-card: 0 20px 60px -20px rgba(0, 0, 0, 0.25);
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s var(--ease);
+  --transition-base: 0.25s var(--ease);
+  --transition-slow: 0.45s var(--ease);
+
+  color-scheme: light;
+  font-family: var(--sans);
+  color: var(--fg);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --bg-raised: #131313;
+  --fg: #f5f5f5;
+  --muted: #9a9a9a;
+  --muted-2: #737373;
+  --border: #232323;
+  --border-soft: #1c1c1c;
+  --pill: #f5f5f5;
+  --pill-fg: #0a0a0a;
+  --accent: #8b7dff;
+  --accent-soft: rgba(139, 125, 255, 0.16);
+  --accent-fg: #0a0a0a;
+  --shadow-card: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+a,
+button {
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+#root,
+main {
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--fg);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+  color: var(--muted);
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--sans);
+}
+
+::selection {
+  background: var(--accent-soft);
+}

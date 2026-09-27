@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge fmt --check
+        working-directory: contracts
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+        working-directory: backend
+      - run: uv run ruff check .
+        working-directory: backend
+      - run: uv run mypy app
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+        working-directory: web
+      - run: npm run lint
+        working-directory: web
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge install
+        working-directory: contracts
+      - run: forge test -vvv --fuzz-runs 256
+        working-directory: contracts
+      - run: forge coverage --report summary
+        working-directory: contracts
+
+  backend-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+        working-directory: backend
+      - run: uv run pytest tests -m "not integration" -v
+        working-directory: backend
+
+  backend-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge install
+        working-directory: contracts
+      - run: forge build
+        working-directory: contracts
+      # tests/integration/anvil_deploy.py reads compiled artifacts straight from
+      # contracts/out (bytecode + ABI) to deploy the full stack on a throwaway anvil node.
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+        working-directory: backend
+      - run: uv run pytest tests -m integration -v
+        working-directory: backend
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+        working-directory: web
+      - run: npm run test
+        working-directory: web
+
+  # e2e (Playwright against a local Docker Compose stack) is designed in the PRD but not
+  # yet implemented -- e2e/ currently has no docker-compose.yml or test suite. Add that
+  # job back here once it exists, rather than shipping a permanently-failing check.
